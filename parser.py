@@ -1,6 +1,6 @@
 def parse(sentence):
-    for i in sentence.split(" "):
-        print(i)
+    for j in sentence.split(" "):
+        print(j)
 
 parse("Tony was here")
 print("Hello")
