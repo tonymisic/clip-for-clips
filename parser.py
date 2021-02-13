@@ -3,4 +3,3 @@ def parse(sentence):
         print(i)
 
 parse("Tony was here")
-print("Hello")
