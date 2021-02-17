@@ -1,5 +1,2 @@
-def parse(sentence):
-    for j in sentence.split(" "):
-        print(j)
+import clip
 
-parse("Tony was here")
