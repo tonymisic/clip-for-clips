@@ -1,5 +1,8 @@
 .DS_Store
+RN50.pt
 data/
 .vscode/
 notebooks/
 tests/
+clip/__pycache__/
+__pycache__/
