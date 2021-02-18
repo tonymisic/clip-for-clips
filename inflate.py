@@ -1,11 +1,14 @@
-import clip, network, torch, video_loader as vl
+import clip, network, torch, video_loader as vl, pickle, numpy as np
 
-# setup
-# device = torch.device("cuda:0")
-# res_net3D = network.generate_model(50, n_classes=700)
-# criterion = vl.CrossEntropyLoss().to(device)
-# res_net3D.load_state_dict(torch.load('./RN50.pt')['state_dict'])
-# res_net3D.fc = vl.nn.Linear(512 * 4, 45)
-# optimizer = vl.SGD(res_net3D.parameters(), lr=0.001, momentum=0.9)
-# res_net3D.to(device)
+def show_clip_state():
+    model = torch.jit.load('./RN50.pt')
+    print("CLIP's RN50 state_dict:")
+    for var_name in model.state_dict():
+        print(var_name, "\t", model.state_dict()[var_name].size())
+
+model = network.generate_model(50)
+print("Random 3dRN50 state_dict:")
+for var_name in model.state_dict():
+    print(var_name, "\t", model.state_dict()[var_name].size())
+
 
