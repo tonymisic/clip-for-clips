@@ -6,3 +6,4 @@ notebooks/
 tests/
 clip/__pycache__/
 __pycache__/
+3d3N50_CLIP.pth

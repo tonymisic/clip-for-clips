@@ -119,15 +119,39 @@ class ResNet(nn.Module):
 
         self.in_planes = block_inplanes[0]
         self.no_max_pool = no_max_pool
-
+        # START OF EDIT
+        # self.conv1 = nn.Conv3d(n_input_channels,
+        #                        self.in_planes,
+        #                        kernel_size=(conv1_t_size, 7, 7),
+        #                        stride=(conv1_t_stride, 2, 2),
+        #                        padding=(conv1_t_size // 2, 3, 3),
+        #                        bias=False)
+        # self.bn1 = nn.BatchNorm3d(self.in_planes)
+        # self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv3d(n_input_channels,
-                               self.in_planes,
-                               kernel_size=(conv1_t_size, 7, 7),
-                               stride=(conv1_t_stride, 2, 2),
-                               padding=(conv1_t_size // 2, 3, 3),
+                               32,
+                               kernel_size=(3, 3, 3),
+                               stride=(2, 2, 2),
+                               padding=(1, 1, 1),
                                bias=False)
-        self.bn1 = nn.BatchNorm3d(self.in_planes)
+        self.bn1 = nn.BatchNorm3d(32)
         self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv3d(32,
+                               32,
+                               kernel_size=(3, 3, 3),
+                               stride=(1, 1, 1),
+                               padding=(1, 1, 1),
+                               bias=False)
+        self.bn2 = nn.BatchNorm3d(32)
+        self.conv3 = nn.Conv3d(32,
+                               64,
+                               kernel_size=(3, 3, 3),
+                               stride=(1, 1, 1),
+                               padding=(1, 1, 1),
+                               bias=False)
+        self.bn3 = nn.BatchNorm3d(64)
+        self.avgpool3 = nn.AvgPool3d((1,2,2))
+        # END OF EDIT
         self.maxpool = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, block_inplanes[0], layers[0],
                                        shortcut_type)
@@ -198,8 +222,13 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        if not self.no_max_pool:
-            x = self.maxpool(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.relu(x)
+        x = self.avgpool3(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
