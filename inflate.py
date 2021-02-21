@@ -1,6 +1,6 @@
 import clip, network, torch, video_loader as vl, pickle, numpy as np
 
-new_lad = torch.load('./3d3N50_CLIP.pth')
+# new_lad = torch.load('./3d3N50_CLIP.pth')
 clip_model = torch.jit.load('./RN50.pt')
 
 ResNet503D_model = network.generate_model(50)
@@ -32,7 +32,7 @@ with torch.no_grad():
                     a,b,c,d,e = current_3D_tensor.size()
                     inflated = inflated.expand(a,b,c,d,e)
                     print("Inflated: ", inflated.size())
-                    ResNet503D_model.state_dict()[current_3D_name] = inflated
+                    ResNet503D_model.state_dict()[current_3D_name].copy_(inflated)
                     print("Successfully inflated and copied tensor!")
                 else:
                     ResNet503D_model.state_dict()[current_3D_name] = clip_model.state_dict()[var_name] # copy values if same sized
@@ -41,4 +41,4 @@ with torch.no_grad():
                 print("Key: " + var_name +  " NOT found!")
         else:
             print("Key " + var_name + " not in visual part of CLIP!")
-# orch.save(ResNet503D_model.state_dict(), './3d3N50_CLIP.pth')
+torch.save(ResNet503D_model.state_dict(), './3d3N50_CLIP.pth')
