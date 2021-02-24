@@ -1,6 +1,6 @@
 import clip, network, torch, video_loader as vl, pickle, numpy as np
 
-new_lad = torch.load('./3d3N50_CLIP.pth')
+# new_lad = torch.load('./3d3N50_CLIP.pth')
 clip_model = torch.jit.load('./RN50.pt')
 ResNet503D_model = network.generate_model(50)
 

@@ -9,6 +9,17 @@ from torch.nn import CrossEntropyLoss
 import torch.nn as nn
 import torch.nn.functional as F
 
+def read_video(video_file):
+        # Open the video file
+        cap = cv2.VideoCapture(video_file)
+        frames = []
+        success, image = cap.read()
+        while success:
+            frames.append(image)
+            success, image = cap.read()
+        if len(frames) >= 1:
+            return np.asarray(frames)
+
 def _is_tensor_clip(clip):
     return torch.is_tensor(clip) and clip.ndimension() == 4
 
