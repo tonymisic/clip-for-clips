@@ -14,8 +14,8 @@ text = clip.tokenize(["a dog"]).to(device)
 with torch.no_grad():
     video_features = our_model(video)
     text_features = CLIP.encode_text(text)
-    #logits_per_image, logits_per_text = CLIP(video, text)
-    #probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+    logits_per_image, logits_per_text = CLIP(video, text)
+    probs = logits_per_image.softmax(dim=-1).cpu().numpy()
 
 # debug our model
 # model = network.generate_model(50)
