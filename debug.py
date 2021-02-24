@@ -5,10 +5,10 @@ from PIL import Image
 device = "cuda" if torch.cuda.is_available() else "cpu"
 CLIP, preprocess = clip.load("RN50", device=device)
 image = preprocess(Image.open("CLIP.png")).unsqueeze(0).to(device)
-text = clip.tokenize(["a diagram", "a dog", "a cat"]).to(device)
+text = clip.tokenize(["a dog", "a cat", "a tony"]).to(device)
 with torch.no_grad():
-    image_features = CLIP.encode_image(image)
-    text_features = CLIP.encode_text(text)
+    #image_features = CLIP.encode_image(image)
+    #text_features = CLIP.encode_text(text)
     logits_per_image, logits_per_text = CLIP(image, text)
     probs = logits_per_image.softmax(dim=-1).cpu().numpy()
 print("Label probs:", probs) 
