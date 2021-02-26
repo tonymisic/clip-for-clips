@@ -1,6 +1,6 @@
 {
     "model_name": "clip_test_1",
-    "output_dir": "datasets.ssv2.trained_models/",
+    "output_dir": "datasets/ssv2/trained_models/",
 
     "input_mode": "av",
 
