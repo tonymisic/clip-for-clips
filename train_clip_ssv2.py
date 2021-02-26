@@ -69,7 +69,8 @@ def main():
         model = MultiColumn(config['num_classes'], cnn_def.Model, int(config["column_units"]))
 
     # multi GPU setting
-    model = torch.nn.DataParallel(model, device_ids).to(device)
+    # model = torch.nn.DataParallel(model, device_ids).to(device)
+    model = model.to(device)
 
     # optionally resume from a checkpoint
     checkpoint_path = os.path.join(config['output_dir'],
@@ -269,18 +270,19 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        if config['nclips_train'] > 1:
-            input_var = list(input.split(config['clip_size'], 2))
-            for idx, inp in enumerate(input_var):
-                input_var[idx] = inp.to(device)
-        else:
-            input_var = [input.to(device)]
+        # if config['nclips_train'] > 1:
+        #     input_var = list(input.split(config['clip_size'], 2))
+        #     for idx, inp in enumerate(input_var):
+        #         input_var[idx] = inp.to(device)
+        # else:
+        #     input_var = [input.to(device)]
 
         # CLIP STUFF - doesn't work yet
         # NEED TO DO:
         # 1) preprocess text, this should probably happen in the dataloader
         # 2) pass through the network (i.e., visual and text part)
         # 3) implement L2 norm and batchwise softmax
+        input = input.to(device)
         sys.exit()
         clip.tokenize(template_caption).to(device)
         clip.tokenize(obj_caption).to(device)
