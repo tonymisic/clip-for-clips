@@ -10,20 +10,21 @@ CLIP.visual = our_model
 CLIP.type(torch.FloatTensor).to(device)
 # our implementation of the loss
 def clip_loss(video_feature_batch, text_feature_batch, batch_size, temperature=0.07): # temperature is learned ?
-    # l2 normalization
+    # l2 normalization - THEY LINEARLY PROJECT HERE, WE (DO) NOT!
     video_feature_batch = video_feature_batch / video_feature_batch.norm(dim=-1, keepdim=True)
     text_feature_batch = text_feature_batch / text_feature_batch.norm(dim=-1, keepdim=True)
+
     # cosine sim as logits
     logit_scale = math.exp(temperature)
-    logits_per_video = logit_scale * video_feature_batch @ text_feature_batch.t()
-    logits_per_text = logit_scale * text_feature_batch @ video_feature_batch.t()
+    logits = logit_scale * video_feature_batch @ text_feature_batch.t()
+    # logits_per_text = logit_scale * text_feature_batch @ video_feature_batch.t()
     # cross entropy loss
     loss = torch.nn.CrossEntropyLoss()
     # generate labels
     labels = torch.arange(batch_size).type(torch.LongTensor).to(device)
     # calculate loss of mini-batch
-    video_loss = loss(logits_per_video, labels)
-    text_loss = loss(logits_per_text, labels)
+    video_loss = loss(logits, labels)
+    text_loss = loss(logits.T, labels)
     overall_loss = (video_loss + text_loss) / 2
     return video_loss, text_loss, overall_loss
 
@@ -41,6 +42,5 @@ for i in range(3):
         #logits_per_image, logits_per_text = CLIP(video, text)
         #probs = logits_per_image.softmax(dim=-1).cpu().numpy()
 video_loss, text_loss, overall_loss = clip_loss(videos, text_features, 3)
-
 
 

@@ -70,7 +70,7 @@ def main():
 
     # multi GPU setting
     # model = torch.nn.DataParallel(model, device_ids).to(device)
-    model = model.to(device)
+    model = model.type(torch.FloatTensor).to(device)
 
     # optionally resume from a checkpoint
     checkpoint_path = os.path.join(config['output_dir'],
@@ -223,11 +223,11 @@ def main():
             sys.exit(1)
 
         # train for one epoch
-        train_loss, train_top1, train_top5 = train(
+        train_loss = train(
             train_loader, model, criterion, optimizer, epoch)
 
         # evaluate on validation set
-        val_loss, val_top1, val_top5 = validate(val_loader, model, criterion)
+        # val_loss, val_top1, val_top5 = validate(val_loader, model, criterion)
 
         # set learning rate
         lr_decayer.step(val_loss, epoch)
@@ -235,37 +235,43 @@ def main():
         # plot learning
         plotter_dict = {}
         plotter_dict['loss'] = train_loss
-        plotter_dict['val_loss'] = val_loss
-        plotter_dict['acc'] = train_top1 / 100
-        plotter_dict['val_acc'] = val_top1 / 100
+        # plotter_dict['val_loss'] = val_loss
+        # plotter_dict['acc'] = train_top1 / 100
+        # plotter_dict['val_acc'] = val_top1 / 100
         plotter_dict['learning_rate'] = lr
         plotter.plot(plotter_dict)
 
         print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
 
         # remember best loss and save the checkpoint
-        is_best = val_loss < best_loss
-        best_loss = min(val_loss, best_loss)
+        # is_best = val_loss < best_loss
+        # best_loss = min(val_loss, best_loss)
         save_checkpoint({
             'epoch': epoch + 1,
-            'arch': "Conv4Col",
+            'arch': "3DR_CLIP",
             'state_dict': model.state_dict(),
-            'best_loss': best_loss,
-        }, is_best, config)
+            'train_loss': train_loss,
+        }, config)
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
-
+    batch_size = config['batch_size']
+    labels = torch.arange(batch_size).type(torch.LongTensor).to(device)
     # switch to train mode
     model.train()
 
     end = time.time()
-    for i, (input, target, obj_caption, template_caption) in enumerate(train_loader):
+    # for i, (input, target, obj_caption, template_caption) in enumerate(train_loader):
+    for i, (input1, target1, obj_caption1, template_caption1) in enumerate(train_loader):
+
+        if i == 0:
+            input = input1
+            target = target1
+            obj_caption = obj_caption1
+            template_caption = template_caption1
 
         # measure data loading time
         data_time.update(time.time() - end)
@@ -282,24 +288,31 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # 1) preprocess text, this should probably happen in the dataloader
         # 2) pass through the network (i.e., visual and text part)
         # 3) implement L2 norm and batchwise softmax
-        input = input.to(device)
-        sys.exit()
-        clip.tokenize(template_caption).to(device)
-        clip.tokenize(obj_caption).to(device)
-        target = target.to(device)
-
         model.zero_grad()
+
+        # move to cuda
+        input = input.type(torch.FloatTensor).to(device)
+        target = target.type(torch.FloatTensor).to(device)
+        caption = clip.tokenize(template_caption).to(device)
+        # caption = clip.tokenize(obj_caption).to(device)
+
+        # forward pass
+        video_features = model.encode_video(input)
+        text_features = model.encode_text(caption)
+
+        vid_loss, text_loss, loss = clip_loss(video_features, text_features,
+                                              batch_size, criterion, labels)
 
         # compute output and loss
         # NEED model(video, text)
-        output = model(input_var)
-        loss = criterion(output, target)
+        # output = model(input_var)
+        # loss = criterion(output, target)
 
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.detach().cpu(), target.detach().cpu(), topk=(1, 5))
+        # prec1, prec5 = accuracy(output.detach().cpu(), target.detach().cpu(), topk=(1, 5))
         losses.update(loss.item(), input.size(0))
-        top1.update(prec1.item(), input.size(0))
-        top5.update(prec5.item(), input.size(0))
+        # top1.update(prec1.item(), input.size(0))
+        # top5.update(prec5.item(), input.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -310,16 +323,15 @@ def train(train_loader, model, criterion, optimizer, epoch):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % config["print_freq"] == 0:
+        # if i % config["print_freq"] == 0:
+        if i % 1 == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                  'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
                       epoch, i, len(train_loader), batch_time=batch_time,
-                      data_time=data_time, loss=losses, top1=top1, top5=top5))
-    return losses.avg, top1.avg, top5.avg
+                      data_time=data_time, loss=losses))
+    return losses.avg
 
 
 def validate(val_loader, model, criterion, class_to_idx=None):

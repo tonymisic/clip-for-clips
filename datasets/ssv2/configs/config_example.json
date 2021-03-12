@@ -15,7 +15,7 @@
     "num_workers": 0,
 
     "num_classes": 174,
-    "batch_size": 30,
+    "batch_size": 3,
     "clip_size": 64,
     
     "nclips_train": 1,
@@ -27,7 +27,7 @@
     "step_size_train": 1,
     "step_size_val": 1,
 
-    "lr": 0.008,
+    "lr": 0.01,
     "last_lr": 0.00001,
     "momentum": 0.9,
     "weight_decay": 0.00001,

@@ -6,6 +6,7 @@ import argparse
 import torch
 import shutil
 import glob
+import math
 import numpy as np
 
 
@@ -69,6 +70,23 @@ def setup_cuda_devices(args):
     if device.type == "cuda":
         device_ids = [int(i) for i in args.gpus.split(',')]
     return device, device_ids
+
+
+def clip_loss(video_feature_batch, text_feature_batch, batch_size, CE_loss, labels, temperature=0.07): # temperature is learned ?
+    # l2 normalization - THEY LINEARLY PROJECT HERE, WE (DO) NOT!
+    video_feature_batch = video_feature_batch / video_feature_batch.norm(dim=-1, keepdim=True)
+    text_feature_batch = text_feature_batch / text_feature_batch.norm(dim=-1, keepdim=True)
+
+    # cosine sim as logits
+    logit_scale = math.exp(temperature)
+    logits = logit_scale * video_feature_batch @ text_feature_batch.t()
+    # logits_per_text = logit_scale * text_feature_batch @ video_feature_batch.t()
+    # generate labels
+    # calculate loss of mini-batch
+    video_loss = CE_loss(logits, labels)
+    text_loss = CE_loss(logits.T, labels)
+    overall_loss = (video_loss + text_loss) / 2
+    return video_loss, text_loss, overall_loss
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
