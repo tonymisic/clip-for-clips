@@ -15,7 +15,7 @@
     "num_workers": 0,
 
     "num_classes": 174,
-    "batch_size": 3,
+    "batch_size": 32,
     "clip_size": 64,
     
     "nclips_train": 1,
@@ -28,11 +28,12 @@
     "step_size_val": 1,
 
     "lr": 0.01,
-    "last_lr": 0.00001,
+    "last_lr": 0.000001,
     "momentum": 0.9,
     "weight_decay": 0.00001,
     "num_epochs": -1,
     "print_freq": 100,
+    "tensorboard_scalar_add": 5,
 
     "conv_model": "datasets.ssv2.models.model3D_1",
     "input_spatial_size": 84,

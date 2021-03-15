@@ -15,6 +15,7 @@ from datasets.ssv2.utils import *
 from datasets.ssv2.callbacks import (PlotLearning, AverageMeter)
 from datasets.ssv2.models.multi_column import MultiColumn
 import torchvision
+from torch.utils.tensorboard import SummaryWriter
 from datasets.ssv2.transforms_video import *
 
 
@@ -52,6 +53,8 @@ def main():
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         os.makedirs(os.path.join(save_dir, 'plots'))
+
+    writer = SummaryWriter(save_dir)
 
     # assign Ctrl+C signal handler
     signal.signal(signal.SIGINT, ExperimentalRunCleaner(save_dir))
@@ -139,44 +142,44 @@ def main():
         num_workers=config['num_workers'], pin_memory=True,
         drop_last=True)
 
-    val_data = VideoFolder(root=config['data_folder'],
-                           json_file_input=config['json_data_val'],
-                           json_file_labels=config['json_file_labels'],
-                           clip_size=config['clip_size'],
-                           nclips=config['nclips_val'],
-                           step_size=config['step_size_val'],
-                           is_val=True,
-                           transform_pre=transform_eval_pre,
-                           transform_post=transform_post,
-                           get_item_id=True,
-                           use_objects=args.use_objects
-                           )
+    # val_data = VideoFolder(root=config['data_folder'],
+    #                        json_file_input=config['json_data_val'],
+    #                        json_file_labels=config['json_file_labels'],
+    #                        clip_size=config['clip_size'],
+    #                        nclips=config['nclips_val'],
+    #                        step_size=config['step_size_val'],
+    #                        is_val=True,
+    #                        transform_pre=transform_eval_pre,
+    #                        transform_post=transform_post,
+    #                        get_item_id=True,
+    #                        use_objects=args.use_objects
+    #                        )
 
-    val_loader = torch.utils.data.DataLoader(
-        val_data,
-        batch_size=config['batch_size'], shuffle=False,
-        num_workers=config['num_workers'], pin_memory=True,
-        drop_last=False)
+    # val_loader = torch.utils.data.DataLoader(
+    #     val_data,
+    #     batch_size=config['batch_size'], shuffle=False,
+    #     num_workers=config['num_workers'], pin_memory=True,
+    #     drop_last=False)
 
-    test_data = VideoFolder(root=config['data_folder'],
-                            json_file_input=config['json_data_test'],
-                            json_file_labels=config['json_file_labels'],
-                            clip_size=config['clip_size'],
-                            nclips=config['nclips_val'],
-                            step_size=config['step_size_val'],
-                            is_val=True,
-                            transform_pre=transform_eval_pre,
-                            transform_post=transform_post,
-                            get_item_id=True,
-                            is_test=True,
-                            use_objects=args.use_objects
-                            )
+    # test_data = VideoFolder(root=config['data_folder'],
+    #                         json_file_input=config['json_data_test'],
+    #                         json_file_labels=config['json_file_labels'],
+    #                         clip_size=config['clip_size'],
+    #                         nclips=config['nclips_val'],
+    #                         step_size=config['step_size_val'],
+    #                         is_val=True,
+    #                         transform_pre=transform_eval_pre,
+    #                         transform_post=transform_post,
+    #                         get_item_id=True,
+    #                         is_test=True,
+    #                         use_objects=args.use_objects
+    #                         )
 
-    test_loader = torch.utils.data.DataLoader(
-        test_data,
-        batch_size=config['batch_size'], shuffle=False,
-        num_workers=config['num_workers'], pin_memory=True,
-        drop_last=False)
+    # test_loader = torch.utils.data.DataLoader(
+    #     test_data,
+    #     batch_size=config['batch_size'], shuffle=False,
+    #     num_workers=config['num_workers'], pin_memory=True,
+    #     drop_last=False)
 
     print(" > Number of dataset classes : {}".format(len(train_data.classes)))
     assert len(train_data.classes) == config["num_classes"]
@@ -199,11 +202,11 @@ def main():
         return
 
     # set callbacks
-    plotter = PlotLearning(os.path.join(
-        save_dir, "plots"), config["num_classes"])
+    # plotter = PlotLearning(os.path.join(
+    #     save_dir, "plots"), config["num_classes"])
     lr_decayer = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                        optimizer, 'min', factor=0.5, patience=2, verbose=True)
-    val_loss = float('Inf')
+                        optimizer, 'min', factor=0.5, patience=5, verbose=True)
+    # val_loss = float('Inf')
 
     # set end condition by num epochs
     num_epochs = int(config["num_epochs"])
@@ -224,37 +227,39 @@ def main():
 
         # train for one epoch
         train_loss = train(
-            train_loader, model, criterion, optimizer, epoch)
+            train_loader, model, criterion, optimizer, epoch, writer)
+
+        writer.add_scalar('Ave_train_Loss', train_loss, epoch)
 
         # evaluate on validation set
         # val_loss, val_top1, val_top5 = validate(val_loader, model, criterion)
 
         # set learning rate
-        lr_decayer.step(val_loss, epoch)
+        lr_decayer.step(train_loss, epoch)
 
         # plot learning
-        plotter_dict = {}
-        plotter_dict['loss'] = train_loss
+        # plotter_dict = {}
+        # plotter_dict['loss'] = train_loss
         # plotter_dict['val_loss'] = val_loss
         # plotter_dict['acc'] = train_top1 / 100
         # plotter_dict['val_acc'] = val_top1 / 100
-        plotter_dict['learning_rate'] = lr
-        plotter.plot(plotter_dict)
+        # plotter_dict['learning_rate'] = lr
+        # plotter.plot(plotter_dict)
 
-        print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
+        print(" > Train loss after epoch {} = {}".format(epoch, train_loss))
 
         # remember best loss and save the checkpoint
-        # is_best = val_loss < best_loss
-        # best_loss = min(val_loss, best_loss)
+        is_best = train_loss < best_loss
+        best_loss = min(train_loss, best_loss)
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': "3DR_CLIP",
             'state_dict': model.state_dict(),
             'train_loss': train_loss,
-        }, config)
+        }, is_best, config)
 
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def train(train_loader, model, criterion, optimizer, epoch, writer):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -264,14 +269,14 @@ def train(train_loader, model, criterion, optimizer, epoch):
     model.train()
 
     end = time.time()
-    # for i, (input, target, obj_caption, template_caption) in enumerate(train_loader):
-    for i, (input1, target1, obj_caption1, template_caption1) in enumerate(train_loader):
+    for i, (input, target, obj_caption, template_caption) in enumerate(train_loader):
+    # for i, (input1, target1, obj_caption1, template_caption1) in enumerate(train_loader):
 
-        if i == 0:
-            input = input1
-            target = target1
-            obj_caption = obj_caption1
-            template_caption = template_caption1
+        # if i == 0:
+        #     input = input1
+        #     target = target1
+        #     obj_caption = obj_caption1
+        #     template_caption = template_caption1
 
         # measure data loading time
         data_time.update(time.time() - end)
@@ -323,14 +328,20 @@ def train(train_loader, model, criterion, optimizer, epoch):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        # if i % config["print_freq"] == 0:
-        if i % 1 == 0:
+
+        if i % config["print_freq"] == 0:
+        # if i % 1 == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
                       epoch, i, len(train_loader), batch_time=batch_time,
                       data_time=data_time, loss=losses))
+
+        # add to tensorboard
+        if i % config["tensorboard_scalar_add"] == 0:
+            writer.add_scalar('train', loss.item(), i)
+
     return losses.avg
 
 
