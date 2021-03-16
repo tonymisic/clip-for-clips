@@ -15,8 +15,8 @@
     "num_workers": 0,
 
     "num_classes": 174,
-    "batch_size": 32,
-    "clip_size": 64,
+    "batch_size": 48,
+    "clip_size": 32,
     
     "nclips_train": 1,
     "nclips_val": 1,

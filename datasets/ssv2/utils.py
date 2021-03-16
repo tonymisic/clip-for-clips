@@ -17,8 +17,7 @@ def load_args():
                         help="train clip contrastive learning model.")
     parser.add_argument('--use_objects', default=True,
                         help="use the placeholder object instead of `something`.")
-    parser.add_argument('--visual_clip_resume', default='3d3N50_CLIP.pth', action='store_true',
-                        help="resume visual encoder CLIP training from a given checkpoint.")
+    parser.add_argument('--visual_clip_resume', default='3d3N50_CLIP.pth', action='store_true', help="resume visual encoder CLIP training from a given checkpoint.")
     parser.add_argument('--eval_only', '-e', action='store_true',
                         help="evaluate trained model on validation data.")
     parser.add_argument('--resume', '-r', action='store_true',

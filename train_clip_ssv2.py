@@ -67,6 +67,11 @@ def main():
         model.visual = res3d
         if args.visual_clip_resume:
             model.visual.load_state_dict(torch.load(args.visual_clip_resume))
+        if args.resume:
+            checkpoint = torch.load(save_dir + '/model_best.pth')
+            args.start_epoch = checkpoint['epoch']
+            best_loss = checkpoint['best_loss']
+            model.load_state_dict(checkpoint['state_dict'])
         ### NEED THE FULL CLIP MODEL (i.e., CLIP.visual) by this point ###
     else:
         model = MultiColumn(config['num_classes'], cnn_def.Model, int(config["column_units"]))
@@ -79,18 +84,24 @@ def main():
     checkpoint_path = os.path.join(config['output_dir'],
                                    config['model_name'],
                                    'model_best.pth.tar')
-    if args.resume:
-        if os.path.isfile(checkpoint_path):
-            print(" > Loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(checkpoint_path)
-            args.start_epoch = checkpoint['epoch']
-            best_loss = checkpoint['best_loss']
-            model.load_state_dict(checkpoint['state_dict'])
-            print(" > Loaded checkpoint '{}' (epoch {})"
-                  .format(checkpoint_path, checkpoint['epoch']))
-        else:
-            print(" !#! No checkpoint found at '{}'".format(
-                checkpoint_path))
+    # if args.resume:
+    #     if os.path.isfile(checkpoint_path):
+    #         print(" > Loading checkpoint '{}'".format(args.resume))
+    #         # if args.clip:
+    #         #     res3d = network.generate_model(50)
+    #         #     model, preprocess = clip.load("RN50", device=device)
+    #         #     model.visual = res3d
+    #         #     if args.visual_clip_resume:
+    #         #         model.visual.load_state_dict(torch.load(checkpoint_path))
+    #         checkpoint = torch.load(checkpoint_path)
+    #         args.start_epoch = checkpoint['epoch']
+    #         best_loss = checkpoint['best_loss']
+    #         model.load_state_dict(checkpoint['state_dict'])
+    #         print(" > Loaded checkpoint '{}' (epoch {})"
+    #               .format(checkpoint_path, checkpoint['epoch']))
+    #     else:
+    #         print(" !#! No checkpoint found at '{}'".format(
+    #             checkpoint_path))
 
     # define augmentation pipeline
     upscale_size_train = int(config['input_spatial_size'] * config["upscale_factor_train"])
@@ -196,10 +207,10 @@ def main():
                                 momentum=momentum,
                                 weight_decay=weight_decay)
 
-    if args.eval_only:
-        validate(val_loader, model, criterion, train_data.classes_dict)
-        print(" > Evaluation DONE !")
-        return
+    # if args.eval_only:
+    #     validate(val_loader, model, criterion, train_data.classes_dict)
+    #     print(" > Evaluation DONE !")
+    #     return
 
     # set callbacks
     # plotter = PlotLearning(os.path.join(
@@ -251,10 +262,18 @@ def main():
         # remember best loss and save the checkpoint
         is_best = train_loss < best_loss
         best_loss = min(train_loss, best_loss)
+        # save_checkpoint({
+        #     'epoch': epoch + 1,
+        #     'arch': "3DR_CLIP",
+        #     'state_dict': model.state_dict(),
+        #     'train_loss': train_loss,
+        # }, is_best, config)
+
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': "3DR_CLIP",
-            'state_dict': model.state_dict(),
+            'visul_state_dict': model.visual.state_dict(),
+            'text_state_dict': model.transformer.state_dict(),
             'train_loss': train_loss,
         }, is_best, config)
 
@@ -267,7 +286,7 @@ def train(train_loader, model, criterion, optimizer, epoch, writer):
     labels = torch.arange(batch_size).type(torch.LongTensor).to(device)
     # switch to train mode
     model.train()
-
+    num_iters = len(train_loader)
     end = time.time()
     for i, (input, target, obj_caption, template_caption) in enumerate(train_loader):
     # for i, (input1, target1, obj_caption1, template_caption1) in enumerate(train_loader):
@@ -340,7 +359,7 @@ def train(train_loader, model, criterion, optimizer, epoch, writer):
 
         # add to tensorboard
         if i % config["tensorboard_scalar_add"] == 0:
-            writer.add_scalar('train', loss.item(), i)
+            writer.add_scalar('train', loss.item(), epoch*num_iters + i)
 
     return losses.avg
 
