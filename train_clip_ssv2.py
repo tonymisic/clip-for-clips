@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-import clip, network, video_loader as vl, pickle
+import clip, network
+# import video_loader as vl, pickle
 from PIL import Image
 
 from datasets.ssv2.utils import *
@@ -43,7 +44,7 @@ else:
 
 
 def main():
-    global args, best_loss
+    global args, best_loss, start_epoch
 
     # set run output folder
     model_name = config["model_name"]
@@ -65,8 +66,20 @@ def main():
         res3d = network.generate_model(50)
         model, preprocess = clip.load("RN50", device=device)
         model.visual = res3d
-        if args.visual_clip_resume:
+        if os.path.exists(save_dir + '/model_best.pth.tar'):
+            print(' > Loading best checkpoint from:', save_dir + '/model_best.pth.tar')
+            checkpoint = torch.load(save_dir + '/model_best.pth.tar')
+            best_loss = checkpoint['train_loss']
+            start_epoch = checkpoint['epoch']
+            visual_chkpt = checkpoint['visul_state_dict']
+            text_chkpt = checkpoint['text_state_dict']
+
+            model.visual.load_state_dict(visual_chkpt)
+            model.transformer.load_state_dict(text_chkpt)
+
+        elif args.visual_clip_resume:
             model.visual.load_state_dict(torch.load(args.visual_clip_resume))
+
         if args.resume:
             checkpoint = torch.load(save_dir + '/model_best.pth')
             args.start_epoch = checkpoint['epoch']
@@ -81,9 +94,9 @@ def main():
     model = model.type(torch.FloatTensor).to(device)
 
     # optionally resume from a checkpoint
-    checkpoint_path = os.path.join(config['output_dir'],
-                                   config['model_name'],
-                                   'model_best.pth.tar')
+    # checkpoint_path = os.path.join(config['output_dir'],
+    #                                config['model_name'],
+    #                                'model_best.pth.tar')
     # if args.resume:
     #     if os.path.isfile(checkpoint_path):
     #         print(" > Loading checkpoint '{}'".format(args.resume))
@@ -216,7 +229,7 @@ def main():
     # plotter = PlotLearning(os.path.join(
     #     save_dir, "plots"), config["num_classes"])
     lr_decayer = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                        optimizer, 'min', factor=0.5, patience=5, verbose=True)
+                        optimizer, 'min', factor=config["lr_factor"], patience=config["lr_patience"], verbose=True)
     # val_loss = float('Inf')
 
     # set end condition by num epochs
@@ -226,7 +239,13 @@ def main():
 
     print(" > Training is getting started...")
     print(" > Training takes {} epochs.".format(num_epochs))
-    start_epoch = args.start_epoch if args.resume else 0
+    # start_epoch = args.start_epoch if args.resume else 0
+
+    if best_loss > 0:
+        print('Best Loss: ', best_loss)
+        print('Starting at epoch: ', start_epoch)
+    else:
+        start_epoch = args.start_epoch if args.resume else 0
 
     for epoch in range(start_epoch, num_epochs):
 
@@ -275,6 +294,7 @@ def main():
             'visul_state_dict': model.visual.state_dict(),
             'text_state_dict': model.transformer.state_dict(),
             'train_loss': train_loss,
+            'lrs': lrs,
         }, is_best, config)
 
 
@@ -437,3 +457,4 @@ def validate(val_loader, model, criterion, class_to_idx=None):
 
 if __name__ == '__main__':
     main()
+
