@@ -5,9 +5,9 @@ import numpy as np
 from datasets.ssv2.data_parser import WebmDataset
 from datasets.ssv2.data_augmentor import Augmentor
 import torchvision
-from datasets.ssv2.transforms_video import *
+# from datasets.ssv2.transforms_video import *
 from datasets.ssv2.utils import save_images_for_debug
-
+from PIL import Image
 
 FRAMERATE = 12  # default value
 
@@ -18,8 +18,7 @@ class VideoFolder(torch.utils.data.Dataset):
                  nclips, step_size, is_val, transform_pre=None, transform_post=None,
                  augmentation_mappings_json=None, augmentation_types_todo=None,
                  get_item_id=False, is_test=False, use_objects=False):
-        self.dataset_object = WebmDataset(json_file_input, json_file_labels,
-                                          root, is_test=is_test, use_objects=use_objects)
+        self.dataset_object = WebmDataset(json_file_input, json_file_labels, root, is_test=is_test, use_objects=use_objects)
         self.json_data = self.dataset_object.json_data
         self.classes = self.dataset_object.classes
         self.classes_dict = self.dataset_object.classes_dict
@@ -35,8 +34,63 @@ class VideoFolder(torch.utils.data.Dataset):
         self.step_size = step_size
         self.is_val = is_val
         self.get_item_id = get_item_id
+        self.normalize = torchvision.transforms.Normalize(
+                       mean=[0.485, 0.456, 0.406],  # default values for imagenet
+                       std=[0.229, 0.224, 0.225])
 
-    def __getitem__(self, index, clip=True):
+    # def __getitem__(self, index, clip=True):
+    #     """
+    #     [!] FPS jittering doesn't work with AV dataloader as of now
+    #     """
+    #
+    #     item = self.json_data[index]
+    #
+    #     # Open video file
+    #     reader = av.open(item.path)
+    #
+    #     try:
+    #         imgs = []
+    #         imgs = [f.to_rgb().to_ndarray() for f in reader.decode(video=0)]
+    #     except (RuntimeError, ZeroDivisionError) as exception:
+    #         print('{}: WEBM reader cannot open {}. Empty '
+    #               'list returned.'.format(type(exception).__name__, item.path))
+    #
+    #     imgs = self.transform_pre(imgs)
+    #     imgs, template = self.augmentor(imgs, item.template)
+    #     imgs = self.transform_post(imgs)
+    #     obj_label = item.label
+    #     num_frames = len(imgs)
+    #
+    #     target_idx = self.classes_dict[template]
+    #
+    #     if self.nclips > -1:
+    #         num_frames_necessary = self.clip_size * self.nclips * self.step_size
+    #     else:
+    #         num_frames_necessary = num_frames
+    #     offset = 0
+    #     if num_frames_necessary < num_frames:
+    #         # If there are more frames, then sample starting offset.
+    #         diff = (num_frames - num_frames_necessary)
+    #         # temporal augmentation
+    #         if not self.is_val:
+    #             offset = np.random.randint(0, diff)
+    #
+    #     imgs = imgs[offset: num_frames_necessary + offset: self.step_size]
+    #
+    #     if len(imgs) < (self.clip_size * self.nclips):
+    #         imgs.extend([imgs[-1]] *
+    #                     ((self.clip_size * self.nclips) - len(imgs)))
+    #
+    #     # format data to torch
+    #     data = torch.stack(imgs)
+    #     data = data.permute(1, 0, 2, 3)
+    #     if self.get_item_id:
+    #         return (data, target_idx, item.id, obj_label, template)
+    #     else:
+    #         return (data, target_idx, obj_label, template)
+
+    # TORCHVISION TRANSFORMS
+    def __getitem__(self, index):
         """
         [!] FPS jittering doesn't work with AV dataloader as of now
         """
@@ -53,14 +107,8 @@ class VideoFolder(torch.utils.data.Dataset):
             print('{}: WEBM reader cannot open {}. Empty '
                   'list returned.'.format(type(exception).__name__, item.path))
 
-        imgs = self.transform_pre(imgs)
-        imgs, template = self.augmentor(imgs, item.template)
-        imgs = self.transform_post(imgs)
-        obj_label = item.label
+        # Random Temporal Cropping
         num_frames = len(imgs)
-
-        target_idx = self.classes_dict[template]
-
         if self.nclips > -1:
             num_frames_necessary = self.clip_size * self.nclips * self.step_size
         else:
@@ -79,11 +127,23 @@ class VideoFolder(torch.utils.data.Dataset):
             imgs.extend([imgs[-1]] *
                         ((self.clip_size * self.nclips) - len(imgs)))
 
+        # Spatial Cropping
+        data = self.transform_pre(imgs)
+        _, template = self.augmentor(None, item.template)
+        # imgs = self.transform_post(imgs)
+        obj_label = item.label
+
+        target_idx = self.classes_dict[template]
+
+        # for i in range(0, 31):
+        #     data[:,i,:,:] = self.normalize(data[:,i,:,:])
+
+
         # format data to torch
-        data = torch.stack(imgs)
-        data = data.permute(1, 0, 2, 3)
+        # data = torch.stack(imgs)
+        # data = data.permute(1, 0, 2, 3)
         if self.get_item_id:
-            return (data, target_idx, item.id, data, target_idx, obj_label, template)
+            return (data, target_idx, item.id, obj_label, template)
         else:
             return (data, target_idx, obj_label, template)
 

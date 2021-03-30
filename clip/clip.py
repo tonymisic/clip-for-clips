@@ -90,29 +90,34 @@ def load(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_a
     preprocess : Callable[[PIL.Image], torch.Tensor]
         A torchvision transform that converts a PIL image into a tensor that the returned model can take as its input
     """
-    if name in _MODELS:
-        model_path = _download(_MODELS[name])
-    elif os.path.isfile(name):
-        model_path = name
-    else:
-        raise RuntimeError(f"Model {name} not found; available models = {available_models()}")
+    # if name in _MODELS:
+    #     model_path = _download(_MODELS[name])
+    # elif os.path.isfile(name):
+    #     model_path = name
+    # else:
+    #     raise RuntimeError(f"Model {name} not found; available models = {available_models()}")
+    #
+    # try:
+    #     # loading JIT archive
+    #     model = torch.jit.load(model_path, map_location=device if jit else "cpu").eval()
+    #     state_dict = None
+    # except RuntimeError:
+    #     # loading saved state dict
+    #     if jit:
+    #         warnings.warn(f"File {model_path} is not a JIT archive. Loading as a state dict instead")
+    #         jit = False
+    #     state_dict = torch.load(model_path, map_location="cpu")
+    # if not jit:
+    #     model = build_model(state_dict or model.state_dict()).to(device)
+    #     if str(device) == "cpu":
+    #         model.float()
+    #     return model, _transform(model.visual.input_resolution)
 
-    try:
-        # loading JIT archive
-        model = torch.jit.load(model_path, map_location=device if jit else "cpu").eval()
-        state_dict = None
-    except RuntimeError:
-        # loading saved state dict
-        if jit:
-            warnings.warn(f"File {model_path} is not a JIT archive. Loading as a state dict instead")
-            jit = False
-        state_dict = torch.load(model_path, map_location="cpu")
-
-    if not jit:
-        model = build_model(state_dict or model.state_dict()).to(device)
-        if str(device) == "cpu":
-            model.float()
-        return model, _transform(model.visual.input_resolution)
+    state_dict = None
+    model = build_model(state_dict).to(device)
+    if str(device) == "cpu":
+        model.float()
+    return model, _transform(model.visual.input_resolution)
 
     # patch the device names
     device_holder = torch.jit.trace(lambda: torch.ones([]).to(torch.device(device)), example_inputs=[])

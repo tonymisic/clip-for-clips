@@ -12,7 +12,7 @@ class DatasetBase(object):
     `label` and `path`
     """
     def __init__(self, json_path_input, json_path_labels, data_root,
-                 extension, is_test=False, use_objects=False):
+                 extension, is_test=False, use_objects=True):
         self.json_path_input = json_path_input
         self.json_path_labels = json_path_labels
         self.data_root = data_root
@@ -53,7 +53,7 @@ class DatasetBase(object):
                         item = ListData(elem['id'],
                                         label,
                                         os.path.join(self.data_root,
-                                                     elem['id'] + self.extension)
+                                                     elem['id'] + self.extension),
                                         )
                         json_data.append(item)
         else:

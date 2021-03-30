@@ -1,7 +1,7 @@
 import json
 import numpy as np
 
-from datasets.ssv2.transforms_video import *
+# from datasets.ssv2.transforms_video import *
 
 
 class Augmentor(object):
@@ -15,8 +15,29 @@ class Augmentor(object):
         # read json to get the mapping dict
         self.augmentation_mapping = self.read_augmentation_mapping(
                                         self.augmentation_mappings_json)
-        self.augmentation_transforms = self.define_augmentation_transforms()
+        # self.augmentation_transforms = self.define_augmentation_transforms()
 
+    # def __call__(self, imgs, label):
+    #     if not self.augmentation_mapping:
+    #         return imgs, label
+    #     else:
+    #         candidate_augmentations = {"same": label}
+    #         for candidate in self.augmentation_types_todo:
+    #             if candidate == "jitter_fps":
+    #                 continue
+    #             if label in self.augmentation_mapping[candidate]:
+    #                 if isinstance(self.augmentation_mapping[candidate], list):
+    #                     candidate_augmentations[candidate] = label
+    #                 elif isinstance(self.augmentation_mapping[candidate], dict):
+    #                     candidate_augmentations[candidate] = self.augmentation_mapping[candidate][label]
+    #                 else:
+    #                     print("Something wrong with data type specified in "
+    #                           "augmentation file. Please check!")
+    #         augmentation_chosen = np.random.choice(list(candidate_augmentations.keys()))
+    #         imgs = self.augmentation_transforms[augmentation_chosen](imgs)
+    #         label = candidate_augmentations[augmentation_chosen]
+    #
+    #         return imgs, label
     def __call__(self, imgs, label):
         if not self.augmentation_mapping:
             return imgs, label
@@ -34,10 +55,10 @@ class Augmentor(object):
                         print("Something wrong with data type specified in "
                               "augmentation file. Please check!")
             augmentation_chosen = np.random.choice(list(candidate_augmentations.keys()))
-            imgs = self.augmentation_transforms[augmentation_chosen](imgs)
+            # imgs = self.augmentation_transforms[augmentation_chosen](imgs)
             label = candidate_augmentations[augmentation_chosen]
 
-            return imgs, label
+            return label
 
     def read_augmentation_mapping(self, path):
         if path:
@@ -47,15 +68,14 @@ class Augmentor(object):
             mapping = None
         return mapping
 
-    def define_augmentation_transforms(self, ):
-        augmentation_transforms = {}
-        augmentation_transforms["same"] = IdentityTransform()
-        augmentation_transforms["left/right"] = RandomHorizontalFlipVideo(1)
-        augmentation_transforms["left/right agnostic"] = RandomHorizontalFlipVideo(1)
-        augmentation_transforms["reverse time"] = RandomReverseTimeVideo(1)
-        augmentation_transforms["reverse time agnostic"] = RandomReverseTimeVideo(0.5)
-
-        return augmentation_transforms
+    # def define_augmentation_transforms(self, ):
+    #     augmentation_transforms = {}
+    #     augmentation_transforms["same"] = IdentityTransform()
+    #     augmentation_transforms["left/right"] = RandomHorizontalFlipVideo(1)
+    #     augmentation_transforms["left/right agnostic"] = RandomHorizontalFlipVideo(1)
+    #     augmentation_transforms["reverse time"] = RandomReverseTimeVideo(1)
+    #     augmentation_transforms["reverse time agnostic"] = RandomReverseTimeVideo(0.5)
+    #     return augmentation_transforms
 
     def jitter_fps(self, framerate):
         if self.augmentation_types_todo and "jitter_fps" in self.augmentation_types_todo:

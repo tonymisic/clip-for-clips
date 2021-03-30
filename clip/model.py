@@ -4,6 +4,7 @@ from typing import Tuple, Union
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.data import Dataset, DataLoader
 
 
 class Bottleneck(nn.Module):
@@ -280,7 +281,7 @@ class CLIP(nn.Module):
             heads=transformer_heads,
             attn_mask=self.build_attention_mask()
         )
-
+        # self.CELoss = nn.functional.cross_entropy()
         self.vocab_size = vocab_size
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
         self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
@@ -290,6 +291,8 @@ class CLIP(nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]))
 
         self.initialize_parameters()
+        # self.CE_loss = nn.CrossEntropyLoss().cuda()
+        # self.labels = torch.arange(12).type(torch.LongTensor).cuda()
 
     def initialize_parameters(self):
         nn.init.normal_(self.token_embedding.weight, std=0.02)
@@ -336,17 +339,22 @@ class CLIP(nn.Module):
         return self.visual(image.type(self.dtype))
 
     def encode_video(self, image):
-        return self.visual(image.type(self.dtype))
+        # return self.visual(image.type(self.dtype)) # torch.float32
+        return self.visual(image.type(torch.float32), sup_pred=True) # torch.float32
+        # return self.visual(image)
 
     def encode_text(self, text):
-        x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
+        # x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
+        x = self.token_embedding(text).type(torch.float32)  # [batch_size, n_ctx, d_model]
 
-        x = x + self.positional_embedding.type(self.dtype)
+        # x = x + self.positional_embedding.type(self.dtype)
+        x = x + self.positional_embedding.type(torch.float32)
         x = x.permute(1, 0, 2)  # NLD -> LND
         # expected type float but got half?
         x = self.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
-        x = self.ln_final(x).type(self.dtype)
+        # x = self.ln_final(x).type(self.dtype)
+        x = self.ln_final(x).type(torch.float32)
 
         # x.shape = [batch_size, n_ctx, transformer.width]
         # take features from the eot embedding (eot_token is the highest number in each sequence)
@@ -354,21 +362,39 @@ class CLIP(nn.Module):
 
         return x
 
-    def forward(self, image, text):
-        image_features = self.encode_image(image)
-        text_features = self.encode_text(text)
+    def forward(self, image, text, pred=False):
+        # image_features = self.encode_image(image)
+        if pred:
+            image_features, pred = self.encode_video(image)
+            text_features = self.encode_text(text)
+            return image_features, text_features, pred
+        else:
+            image_features = self.encode_video(image)
+            text_features = self.encode_text(text)
+            return image_features, text_features # 48*12
 
-        # normalized features
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-        # cosine similarity as logits
-        logit_scale = self.logit_scale.exp()
-        logits_per_image = logit_scale * image_features @ text_features.t()
-        logits_per_text = logit_scale * text_features @ image_features.t()
-
-        # shape = [global_batch_size, global_batch_size]
-        return logits_per_image, logits_per_text
+        # if train:
+        #     return image_features, text_features # 48*12
+        # else:
+        #     # normalized features
+        #     image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        #     text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        #
+        #     # cosine similarity as logits
+        #     logit_scale = self.logit_scale.exp()
+    #     logits_per_image = logit_scale * image_features @ text_features.t()
+    #     logits_per_text = logit_scale * text_features @ image_features.t()
+        #     return logits_per_image, logits_per_text
+        #
+        # # if train:
+        # #     video_loss = self.CE_loss(logits_per_image, self.labels)
+        # #     text_loss = self.CE_loss(logits_per_text, self.labels)
+        # #     overall_loss = (video_loss + text_loss) / 2
+        # #     return overall_loss
+        #
+        # # shape = [global_batch_size, global_batch_size]
+        # return logits_per_image, logits_per_text # 12*12
+        # return image_features, text_features # 48*12
 
 
 def convert_weights(model: nn.Module):
@@ -396,40 +422,43 @@ def convert_weights(model: nn.Module):
 
 
 def build_model(state_dict: dict):
-    vit = "visual.proj" in state_dict
+    # vit = "visual.proj" in state_dict
+    #
+    # if vit:
+    #     vision_width = state_dict["visual.conv1.weight"].shape[0]
+    #     vision_layers = len([k for k in state_dict.keys() if k.startswith("visual.") and k.endswith(".attn.in_proj_weight")])
+    #     vision_patch_size = state_dict["visual.conv1.weight"].shape[-1]
+    #     grid_size = round((state_dict["visual.positional_embedding"].shape[0] - 1) ** 0.5)
+    #     image_resolution = vision_patch_size * grid_size
+    # else:
+    #     counts: list = [len(set(k.split(".")[2] for k in state_dict if k.startswith(f"visual.layer{b}"))) for b in [1, 2, 3, 4]]
+    #     vision_layers = tuple(counts)
+    #     vision_width = state_dict["visual.layer1.0.conv1.weight"].shape[0]
+    #     output_width = round((state_dict["visual.attnpool.positional_embedding"].shape[0] - 1) ** 0.5)
+    #     vision_patch_size = None
+    #     assert output_width ** 2 + 1 == state_dict["visual.attnpool.positional_embedding"].shape[0]
+    #     image_resolution = output_width * 32
+    #
+    # embed_dim = state_dict["text_projection"].shape[1]
+    # context_length = state_dict["positional_embedding"].shape[0]
+    # vocab_size = state_dict["token_embedding.weight"].shape[0]
+    # transformer_width = state_dict["ln_final.weight"].shape[0]
+    # transformer_heads = transformer_width // 64
+    # transformer_layers = len(set(k.split(".")[2] for k in state_dict if k.startswith(f"transformer.resblocks")))
+    #
+    # model = CLIP(
+    #     embed_dim,
+    #     image_resolution, vision_layers, vision_width, vision_patch_size,
+    #     context_length, vocab_size, transformer_width, transformer_heads, transformer_layers
+    # )
 
-    if vit:
-        vision_width = state_dict["visual.conv1.weight"].shape[0]
-        vision_layers = len([k for k in state_dict.keys() if k.startswith("visual.") and k.endswith(".attn.in_proj_weight")])
-        vision_patch_size = state_dict["visual.conv1.weight"].shape[-1]
-        grid_size = round((state_dict["visual.positional_embedding"].shape[0] - 1) ** 0.5)
-        image_resolution = vision_patch_size * grid_size
-    else:
-        counts: list = [len(set(k.split(".")[2] for k in state_dict if k.startswith(f"visual.layer{b}"))) for b in [1, 2, 3, 4]]
-        vision_layers = tuple(counts)
-        vision_width = state_dict["visual.layer1.0.conv1.weight"].shape[0]
-        output_width = round((state_dict["visual.attnpool.positional_embedding"].shape[0] - 1) ** 0.5)
-        vision_patch_size = None
-        assert output_width ** 2 + 1 == state_dict["visual.attnpool.positional_embedding"].shape[0]
-        image_resolution = output_width * 32
+    # DEBUGGING - UNCOMMENT EVERYTHING BUT THIS
+    model = CLIP(1024, 224, (3,4,6,3), 64, None, 77, 49408, 512, 8, 12)
 
-    embed_dim = state_dict["text_projection"].shape[1]
-    context_length = state_dict["positional_embedding"].shape[0]
-    vocab_size = state_dict["token_embedding.weight"].shape[0]
-    transformer_width = state_dict["ln_final.weight"].shape[0]
-    transformer_heads = transformer_width // 64
-    transformer_layers = len(set(k.split(".")[2] for k in state_dict if k.startswith(f"transformer.resblocks")))
-
-    model = CLIP(
-        embed_dim,
-        image_resolution, vision_layers, vision_width, vision_patch_size,
-        context_length, vocab_size, transformer_width, transformer_heads, transformer_layers
-    )
-
-    for key in ["input_resolution", "context_length", "vocab_size"]:
-        if key in state_dict:
-            del state_dict[key]
-
-    convert_weights(model)
-    model.load_state_dict(state_dict)
+    # for key in ["input_resolution", "context_length", "vocab_size"]:
+    #     if key in state_dict:
+    #         del state_dict[key]
+    #
+    # convert_weights(model)
+    # model.load_state_dict(state_dict)
     return model.eval()

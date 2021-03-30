@@ -1,7 +1,8 @@
 import clip, network, torch, video_loader as vl, pickle, numpy as np
 
 # new_lad = torch.load('./3d3N50_CLIP.pth')
-clip_model = torch.jit.load('./RN50.pt')
+# clip_model = torch.jit.load('./RN50.pt')
+clip_model, preprocess = clip.load("RN50", device='cpu')
 ResNet503D_model = network.generate_model(50)
 
 with torch.no_grad():
@@ -37,4 +38,4 @@ with torch.no_grad():
                 print("Key: " + var_name +  " NOT found!")
         else:
             print("Key " + var_name + " not in visual part of CLIP!")
-torch.save(ResNet503D_model.state_dict(), './3d3N50_CLIP.pth')
+torch.save(ResNet503D_model.state_dict(), './3d3N50_CLIP_pytorch1.2.pth')

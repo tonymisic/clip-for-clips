@@ -1,18 +1,18 @@
 {
-    "model_name": "clip_test_1",
+    "model_name": "batch48_clip32_train_all",
     "output_dir": "datasets/ssv2/trained_models/",
 
     "input_mode": "av",
 
-    "data_folder": "/home/matthew/Desktop/Datasets/ssv2/20bn-something-something-v2/",
+    "data_folder": "/media/ssd2/ssv2/20bn-something-something-v2/",
 
-    "json_data_train": "/home/matthew/Desktop/Datasets/ssv2/something-something-v2-train.json",
-    "json_data_val": "/home/matthew/Desktop/Datasets/ssv2/something-something-v2-validation.json",
-    "json_data_test": "/home/matthew/Desktop/Datasets/ssv2/something-something-v2-test.json",
+    "json_data_train": "/mnt/zeta_share_1/public_share/Datasets/ssv2/something-something-v2-train.json",
+    "json_data_val": "/mnt/zeta_share_1/public_share/Datasets/ssv2/something-something-v2-validation.json",
+    "json_data_test": "/mnt/zeta_share_1/public_share/Datasets/ssv2/something-something-v2-test.json",
 
-    "json_file_labels": "/home/matthew/Desktop/Datasets/ssv2/something-something-v2-labels.json",
+    "json_file_labels": "/mnt/zeta_share_1/public_share/Datasets/ssv2/something-something-v2-labels.json",
 
-    "num_workers": 0,
+    "num_workers": 16,
 
     "num_classes": 174,
     "batch_size": 48,
@@ -27,8 +27,10 @@
     "step_size_train": 1,
     "step_size_val": 1,
 
-    "lr": 0.01,
+    "lr": 0.001,
     "last_lr": 0.000001,
+    "lr_patience": 5,
+    "lr_factor": 0.1,
     "momentum": 0.9,
     "weight_decay": 0.00001,
     "num_epochs": -1,

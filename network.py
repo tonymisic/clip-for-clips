@@ -209,6 +209,7 @@ class ResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.fc = nn.Linear(block_inplanes[3] * block.expansion, n_classes)
+        self.fc2 = nn.Linear(2048, 174)
         embed_dim = 64 * 32  # the ResNet feature dimension
         self.attnpool = AttentionPool2d(224 // 32, embed_dim, 32, 1024)
         for m in self.modules():
@@ -255,7 +256,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, sup_pred=False):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -273,8 +274,11 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x_flat = x.view(x.size(0), -1)
+        x = self.fc(x_flat)
+        if sup_pred:
+            x2 = self.fc2(x_flat)
+            return x, x2
         # x = self.attnpool(x)
         return x
 

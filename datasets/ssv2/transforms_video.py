@@ -1,10 +1,11 @@
-import torch
 import cv2
+import torch
 import numpy as np
 import numbers
 import collections
 import random
 
+cv2.setNumThreads(0)
 
 class ComposeMix(object):
     r"""Composes several transforms together. It takes a list of

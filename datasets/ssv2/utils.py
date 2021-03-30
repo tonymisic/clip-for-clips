@@ -11,18 +11,19 @@ import numpy as np
 
 
 def load_args():
-    parser = argparse.ArgumentParser(description='Smth-Smth example training')
-    parser.add_argument('--config', '-c', default='datasets/ssv2/configs/config_example.json', help='json config file path')
+    parser = argparse.ArgumentParser(description='2D Clip training ssv2')
+    parser.add_argument('--config', '-c', default='datasets/ssv2/configs/config_supervised_CLIP.json', help='json config file path')
+    # parser.add_argument('--config', '-c', default='datasets/ssv2/configs/config_3D_ResNet.json', help='json config file path')
     parser.add_argument('--clip', default=True,
                         help="train clip contrastive learning model.")
     parser.add_argument('--use_objects', default=True,
                         help="use the placeholder object instead of `something`.")
     parser.add_argument('--visual_clip_resume', default='3d3N50_CLIP.pth', action='store_true', help="resume visual encoder CLIP training from a given checkpoint.")
-    parser.add_argument('--eval_only', '-e', action='store_true',
+    parser.add_argument('--eval_only', '-e', action='store_true', #default=True,
                         help="evaluate trained model on validation data.")
     parser.add_argument('--resume', '-r', action='store_true',
                         help="resume training from a given checkpoint.")
-    parser.add_argument('--gpus', '-g', default='0', help="GPU ids to use. Please"
+    parser.add_argument('--gpus', '-g', default='0,1', help="GPU ids to use. Please"
                          " enter a comma separated list")
     parser.add_argument('--use_cuda', action='store_true', default=True,
                         help="to use GPUs")
